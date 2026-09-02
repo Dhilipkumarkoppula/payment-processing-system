@@ -21,7 +21,7 @@ public class payment {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(unique = true)
+    @Column(nullable = false,unique = true)
     private String idempotencyKey;
 
     @Column(nullable = false)

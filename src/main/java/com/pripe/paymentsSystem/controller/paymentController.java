@@ -23,9 +23,10 @@ public class paymentController {
     }
 
     @PostMapping
-    public ResponseEntity<payment> createPayment(@Valid @RequestBody createPaymentRequest request) {
-        payment Payment = PaymentService.createPayment(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(Payment);
+    public ResponseEntity<payment> createPayment(@RequestHeader("Idempotency-Key") String idempotencyKey,@Valid @RequestBody createPaymentRequest request) {
+        paymentService.IdempotentResult Result = PaymentService.createPayment(idempotencyKey, request);
+        HttpStatus Status = Result.wasAlreadyCreated() ? HttpStatus.OK : HttpStatus.CREATED;
+        return ResponseEntity.status(Status).body(Result.Payment());
     }
 
     @GetMapping("/{id}")
