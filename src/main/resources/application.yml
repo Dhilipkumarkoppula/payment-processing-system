@@ -12,3 +12,5 @@ spring:
     properties:
       hibernate:
         format_sql: true
+webhook:
+  secret: whsec_test_secret_12345

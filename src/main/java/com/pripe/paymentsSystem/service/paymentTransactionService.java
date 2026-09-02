@@ -1,5 +1,6 @@
     package com.pripe.paymentsSystem.service;
 
+    import com.pripe.paymentsSystem.DTO.webhookPayload;
     import com.pripe.paymentsSystem.entity.payment;
     import com.pripe.paymentsSystem.entity.PaymentStatus;
     import com.pripe.paymentsSystem.exception.paymentNotFoundException;
@@ -51,5 +52,21 @@
             }
             Payment.setProcessedAt(Instant.now());
             return PaymentRepository.save(Payment);
+        }
+
+        @Transactional public void applyWebhookResult(webhookPayload Payload){
+            payment Payment = PaymentRepository.findById(Payload.PaymentId()) .orElseThrow(() -> new paymentNotFoundException(Payload.PaymentId()));
+            if (Payment.getStatus() == PaymentStatus.SUCCESS || Payment.getStatus() == PaymentStatus.FAILED) {
+                return;
+            }
+            if (Payload.EventType().equals("payment.success")) {
+                Payment.setStatus(PaymentStatus.SUCCESS);
+            }
+            else if (Payload.EventType().equals("payment.failed")) {
+                Payment.setStatus(PaymentStatus.FAILED);
+                Payment.setFailureReason("Reported failed via webhook");
+            }
+            Payment.setProcessedAt(Instant.now());
+            PaymentRepository.save(Payment);
         }
     }
