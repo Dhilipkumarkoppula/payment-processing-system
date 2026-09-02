@@ -3,6 +3,7 @@ package com.pripe.paymentsSystem.controller;
 import com.pripe.paymentsSystem.entity.payment;
 import com.pripe.paymentsSystem.DTO.createPaymentRequest;
 import com.pripe.paymentsSystem.service.paymentService;
+import com.pripe.paymentsSystem.service.paymentTransactionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -17,8 +18,7 @@ import java.util.UUID;
 public class paymentController {
 
     private final paymentService PaymentService;
-
-    public paymentController(paymentService paymentService) {
+    public paymentController(paymentService paymentService, paymentTransactionService paymentTransactionService) {
         PaymentService = paymentService;
     }
 
@@ -32,5 +32,11 @@ public class paymentController {
     @GetMapping("/{id}")
     public ResponseEntity<Optional<payment>> getPayment(@PathVariable UUID id) {
         return ResponseEntity.ok(PaymentService.getPayment(id));
+    }
+
+    @PostMapping("/{id}/process")
+    public ResponseEntity<payment> processPayment(@PathVariable UUID id) {
+        payment Result = PaymentService.processPayment(id);
+        return ResponseEntity.ok(Result);
     }
 }

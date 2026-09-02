@@ -2,6 +2,7 @@ package com.pripe.paymentsSystem.service;
 import com.pripe.paymentsSystem.DTO.createPaymentRequest;
 import com.pripe.paymentsSystem.entity.PaymentStatus;
 import com.pripe.paymentsSystem.entity.payment;
+import com.pripe.paymentsSystem.gateway.paymentGatewaySimulator;
 import com.pripe.paymentsSystem.repository.paymentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -14,9 +15,13 @@ import java.util.UUID;
 public class paymentService {
     public record IdempotentResult(payment Payment, boolean wasAlreadyCreated) {}
     private final paymentRepository PaymentRepository;
+    private final paymentTransactionService PaymentTransactionService;
+    private final paymentGatewaySimulator PaymentGatewaySimulator;
 
-    public paymentService(paymentRepository paymentRepository) {
+    public paymentService(paymentRepository paymentRepository, paymentTransactionService paymentTransactionService, paymentGatewaySimulator paymentGatewaySimulator) {
         PaymentRepository = paymentRepository;
+        PaymentTransactionService = paymentTransactionService;
+        PaymentGatewaySimulator = paymentGatewaySimulator;
     }
 
     public IdempotentResult createPayment(String idempotencyKey,createPaymentRequest request){
@@ -47,5 +52,14 @@ public class paymentService {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+    public payment processPayment(UUID Id) {
+        payment Payment = PaymentTransactionService.markAsProcessing(Id);
+
+        paymentGatewaySimulator.gatewayResult Result = PaymentGatewaySimulator.charge(
+                Payment.getAmount(), Payment.getCurrency()
+        );
+
+        return PaymentTransactionService.finalizeProcessing(Id, Result);
     }
 }

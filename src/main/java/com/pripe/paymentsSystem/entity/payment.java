@@ -24,6 +24,16 @@ public class payment {
     @Column(nullable = false,unique = true)
     private String idempotencyKey;
 
+    public Instant getProcessedAt() {
+        return processedAt;
+    }
+
+    public void setProcessedAt(Instant processedAt) {
+        this.processedAt = processedAt;
+    }
+
+    @Column private Instant processedAt;
+
     @Column(nullable = false)
     private BigDecimal amount;
 
