@@ -35,7 +35,8 @@ public class webhookController {
         }
         PaymentTransactionService.applyWebhookResult(Payload);
         webhookEvent Event = new webhookEvent();
-        Event.setEventId(Payload.EventId()); Event.setEventType(Payload.EventType());
+        Event.setEventId(Payload.EventId());
+        Event.setEventType(Payload.EventType());
         WebhookEventRepository.save(Event);
         return ResponseEntity.ok("Processed");
     }

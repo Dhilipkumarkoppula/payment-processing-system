@@ -2,9 +2,11 @@ package com.pripe.paymentsSystem.service;
 import com.pripe.paymentsSystem.DTO.createPaymentRequest;
 import com.pripe.paymentsSystem.entity.PaymentStatus;
 import com.pripe.paymentsSystem.entity.payment;
+import com.pripe.paymentsSystem.exception.paymentNotFoundException;
 import com.pripe.paymentsSystem.gateway.paymentGatewaySimulator;
 import com.pripe.paymentsSystem.repository.paymentRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
@@ -46,12 +48,9 @@ public class paymentService {
             // }
         }
     }
-    public Optional<payment> getPayment(UUID id) {
-        try {
-            return PaymentRepository.findById(id);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+    @Cacheable(value = "payments", key = "#root.args[0]")
+    public payment getPayment(UUID id) {
+        return PaymentRepository.findById(id) .orElseThrow(() -> new paymentNotFoundException(id));
     }
     public payment processPayment(UUID Id) {
         payment Payment = PaymentTransactionService.markAsProcessing(Id);

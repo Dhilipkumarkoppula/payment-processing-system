@@ -9,6 +9,7 @@
     import com.pripe.paymentsSystem.repository.paymentRepository;
     import jakarta.persistence.Id;
     import lombok.RequiredArgsConstructor;
+    import org.springframework.cache.annotation.CacheEvict;
     import org.springframework.stereotype.Service;
     import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +25,7 @@
             PaymentRepository = paymentRepository;
         }
 
+        @CacheEvict(value = "payments", key = "#root.args[0]")
         @Transactional
         public payment markAsProcessing(UUID Id) {
             payment Payment = PaymentRepository.findById(Id)
@@ -39,6 +41,7 @@
             return PaymentRepository.save(Payment);
         }
 
+        @CacheEvict(value = "payments", key = "#root.args[0]")
         @Transactional
         public payment finalizeProcessing(UUID Id, paymentGatewaySimulator.gatewayResult Result) {
             payment Payment = PaymentRepository.findById(Id)
@@ -54,6 +57,7 @@
             return PaymentRepository.save(Payment);
         }
 
+        @CacheEvict(value = "payments", key = "#root.args[0].PaymentId()")
         @Transactional public void applyWebhookResult(webhookPayload Payload){
             payment Payment = PaymentRepository.findById(Payload.PaymentId()) .orElseThrow(() -> new paymentNotFoundException(Payload.PaymentId()));
             if (Payment.getStatus() == PaymentStatus.SUCCESS || Payment.getStatus() == PaymentStatus.FAILED) {

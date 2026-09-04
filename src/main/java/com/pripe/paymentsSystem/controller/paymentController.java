@@ -30,7 +30,7 @@ public class paymentController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Optional<payment>> getPayment(@PathVariable UUID id) {
+    public ResponseEntity<payment> getPayment(@PathVariable UUID id) {
         return ResponseEntity.ok(PaymentService.getPayment(id));
     }
 
