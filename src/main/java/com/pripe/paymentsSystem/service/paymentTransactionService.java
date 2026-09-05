@@ -3,6 +3,7 @@
     import com.pripe.paymentsSystem.DTO.webhookPayload;
     import com.pripe.paymentsSystem.entity.payment;
     import com.pripe.paymentsSystem.entity.PaymentStatus;
+    import com.pripe.paymentsSystem.event.paymentEvent;
     import com.pripe.paymentsSystem.exception.paymentNotFoundException;
     import com.pripe.paymentsSystem.exception.invalidPaymentStateException;
     import com.pripe.paymentsSystem.gateway.paymentGatewaySimulator;
@@ -10,6 +11,7 @@
     import jakarta.persistence.Id;
     import lombok.RequiredArgsConstructor;
     import org.springframework.cache.annotation.CacheEvict;
+    import org.springframework.context.ApplicationEventPublisher;
     import org.springframework.stereotype.Service;
     import org.springframework.transaction.annotation.Transactional;
 
@@ -20,9 +22,10 @@
     public class paymentTransactionService {
 
         private final paymentRepository PaymentRepository;
-
-        public paymentTransactionService(paymentRepository paymentRepository) {
+        private final ApplicationEventPublisher EventPublisher;
+        public paymentTransactionService(paymentRepository paymentRepository, ApplicationEventPublisher eventPublisher) {
             PaymentRepository = paymentRepository;
+            EventPublisher = eventPublisher;
         }
 
         @CacheEvict(value = "payments", key = "#root.args[0]")
@@ -38,7 +41,13 @@
             }
 
             Payment.setStatus(PaymentStatus.PROCESSING);
-            return PaymentRepository.save(Payment);
+            payment Saved = PaymentRepository.save(Payment);
+
+            EventPublisher.publishEvent(new paymentEvent(
+                    Saved.getId(), "payment.processing", Saved.getStatus().toString(), Instant.now()
+            ));
+
+            return Saved;
         }
 
         @CacheEvict(value = "payments", key = "#root.args[0]")
@@ -54,7 +63,16 @@
                 Payment.setFailureReason(Result.failureReason());
             }
             Payment.setProcessedAt(Instant.now());
-            return PaymentRepository.save(Payment);
+            payment Saved = PaymentRepository.save(Payment);
+
+            EventPublisher.publishEvent(new paymentEvent(
+                    Saved.getId(),
+                    Result.success() ? "payment.success" : "payment.failed",
+                    Saved.getStatus().toString(),
+                    Instant.now()
+            ));
+
+            return Saved;
         }
 
         @CacheEvict(value = "payments", key = "#root.args[0].PaymentId()")
@@ -71,6 +89,10 @@
                 Payment.setFailureReason("Reported failed via webhook");
             }
             Payment.setProcessedAt(Instant.now());
-            PaymentRepository.save(Payment);
+            payment Saved = PaymentRepository.save(Payment);
+
+            EventPublisher.publishEvent(new paymentEvent(
+                    Saved.getId(), Payload.EventType(), Saved.getStatus().toString(), Instant.now()
+            ));
         }
     }

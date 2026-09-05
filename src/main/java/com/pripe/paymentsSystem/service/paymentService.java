@@ -2,14 +2,18 @@ package com.pripe.paymentsSystem.service;
 import com.pripe.paymentsSystem.DTO.createPaymentRequest;
 import com.pripe.paymentsSystem.entity.PaymentStatus;
 import com.pripe.paymentsSystem.entity.payment;
+import com.pripe.paymentsSystem.event.paymentEvent;
 import com.pripe.paymentsSystem.exception.paymentNotFoundException;
 import com.pripe.paymentsSystem.gateway.paymentGatewaySimulator;
 import com.pripe.paymentsSystem.repository.paymentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -19,13 +23,15 @@ public class paymentService {
     private final paymentRepository PaymentRepository;
     private final paymentTransactionService PaymentTransactionService;
     private final paymentGatewaySimulator PaymentGatewaySimulator;
+    private final ApplicationEventPublisher EventPublisher;
 
-    public paymentService(paymentRepository paymentRepository, paymentTransactionService paymentTransactionService, paymentGatewaySimulator paymentGatewaySimulator) {
+    public paymentService(paymentRepository paymentRepository, paymentTransactionService paymentTransactionService, paymentGatewaySimulator paymentGatewaySimulator, ApplicationEventPublisher eventPublisher) {
         PaymentRepository = paymentRepository;
         PaymentTransactionService = paymentTransactionService;
         PaymentGatewaySimulator = paymentGatewaySimulator;
+        EventPublisher = eventPublisher;
     }
-
+    @Transactional
     public IdempotentResult createPayment(String idempotencyKey,createPaymentRequest request){
         Optional<payment> existing = PaymentRepository.findByIdempotencyKey(idempotencyKey);
         if (existing.isPresent()) {
@@ -39,8 +45,11 @@ public class paymentService {
         Payment.setStatus(PaymentStatus.CREATED);
         // idempotencyKey intentionally left unset — Phase 2
         try {
-            payment saved = PaymentRepository.save(Payment);
-            return new IdempotentResult(saved, false);
+            payment Saved = PaymentRepository.save(Payment);
+            EventPublisher.publishEvent(new paymentEvent(
+                    Saved.getId(), "payment.created", Saved.getStatus().toString(), Instant.now()
+            ));
+            return new IdempotentResult(Saved, false);
         } catch (DataIntegrityViolationException e) {
             // Race condition: another request with the same key was saved microseconds before us. // The DB's UNIQUE constraint caught it — fall back to returning that existing record.
             payment raceWinner = PaymentRepository.findByIdempotencyKey(idempotencyKey) .orElseThrow(() -> e);
